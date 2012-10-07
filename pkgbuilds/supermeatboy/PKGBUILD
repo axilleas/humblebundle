@@ -1,0 +1,45 @@
+# Maintainer: zendeavor <j.s.mcgee115@gmail.com>
+# Contributor: Yochai Gal <yochaigal@gmail.com>
+# Contributor: Yann Kaiser <kaiser.yann@gmail.com>
+
+pkgname=supermeatboy
+pkgver=20120607
+_pkgver=06072012
+pkgrel=16
+pkgdesc="Super Meat Boy is a game where you play as a boy without skin whose girlfriend who is made of bandages gets kidnapped by a fetus in a tuxedo wearing a top hat and a monocle."
+url="http://www.supermeatboy.com/"
+license=('custom')
+arch=('i686' 'x86_64')
+groups=("humble-indie-bundleV" "humble-indie-bundle4" "games")
+depends=('openal' 'sdl')
+source=("${pkgname}-linux-${_pkgver}-bin" 
+        "${pkgname}.install"
+        "${pkgname}.desktop"
+        "${pkgname}.sh")
+md5sums=("90a563ff103b4610b41af5fd2bccb21a"
+        "b25345577b44fbeeba96c6cc87f11c1e"
+        "7f7d1960582fe88f322265e0b98c2a8f"
+        "9b8ec81052ac2acfac07ce4a2a5a330d")
+makedepends=('unzip')
+options=('!strip')
+# if [[ -f "${source[0]%%:*}" ]]; then
+#   makedepends=('unzip')
+# else
+#   makedepends=('unzip' 'humblepie')
+# fi
+PKGEXT=".pkg.tar"
+
+package() {
+  mkdir -p "${pkgdir}/opt/games/${pkgname}"
+  [[ -f "${source[0]}" ]] ||
+    error "Place the game or a symlink to the game in ${startdir}"
+  unzip -u "${source[0]}" -d "${pkgdir}/opt/games/${pkgname}" || true
+  find "${pkgdir}" -type f -exec chmod 644 "{}" +
+  install -Dm644 "${pkgname}".desktop "${pkgdir}/usr/share/applications/${pkgname}.desktop"
+  install -Dm755 "${pkgname}".sh "${pkgdir}/usr/bin/${pkgname}"
+  chmod 755 "${pkgdir}/opt/games/${pkgname}/data/SuperMeatBoy" \
+    "${pkgdir}/opt/games/${pkgname}/data/amd64/SuperMeatBoy-amd64" \
+    "${pkgdir}/opt/games/${pkgname}/data/x86/SuperMeatBoy-x86"
+}
+
+# vim: ft=PKGBUILD sts=2 ts=2 sw=2 et

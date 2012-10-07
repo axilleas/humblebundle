@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Categories=Game;
+Name=Bit.Trip Runner
+Comment=Rhythm-based action platformer
+Icon=bit.trip.runner
+Exec=/usr/bin/bit.trip.runner
+Terminal=false

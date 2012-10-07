@@ -1,0 +1,78 @@
+# Maintainer: Sam S. <smls75@gmail.com>
+
+pkgname=spaz-hib
+pkgver=2012_09_18
+_hibver=09182012
+pkgrel=0
+pkgdesc='Space Pirates and Zombies, a top-down space combat game (Humble Bundle version)'
+url='http://spacepiratesandzombies.com/'
+arch=('i686' 'x86_64')
+license=('custom:commercial')
+depends=('gcc-libs' 'libgl' 'sdl' 'openal' 'alsa-lib')
+optdepends=('alsa-plugins: PulseAudio support'
+            'libpulse: PulseAudio support')
+if [ $CARCH == x86_64 ]; then
+  depends=('lib32-gcc-libs' 'lib32-libgl' 'lib32-sdl' 'lib32-openal' 'lib32-alsa-lib')
+  optdepends=('lib32-alsa-plugins: PulseAudio support'
+              'lib32-libpulse: PulseAudio support')
+fi
+source=('spaz-hib.desktop')
+md5sums=('9fc788b38bb5d21f63f97913734d3db0')
+PKGEXT='.pkg.tar'
+
+_gamepkg="spaz-linux-humblebundle-${_hibver}-bin"
+
+
+package() {
+  cd $srcdir
+
+  # Get installer
+  _get_humblebundle_source "${_gamepkg}" || {
+    error "Unable to find the game archive. Please download it from your Humble
+           Bundle page, and place it into one of the above locations."
+    exit 1; }
+
+  # Extract the installer
+  unzip -o "${_gamepkg}" || true
+
+#   # Remove bundled libraries (to force usage of system libs instead)
+  rm -rf $srcdir/data/libSDL-1.2.so.0
+  rm -rf $srcdir/data/libopenal.so
+
+  install -d "${pkgdir}/opt/SPAZ"
+  cp -r "$srcdir/data/"* "${pkgdir}/opt/SPAZ/"
+
+  # Install desktop entry
+  install -Dm644 "$pkgname.desktop" \
+                 "$pkgdir/usr/share/applications/$pkgname.desktop"
+
+  # Install icon
+  install -Dm644 "data/SPAZ.png" "$pkgdir/usr/share/pixmaps/spaz.png"
+
+  # Create launcher script
+  install -d "$pkgdir/usr/bin"
+  echo -e "#!/bin/sh\ncd /opt/SPAZ && ./SPAZ" > "$pkgdir/usr/bin/spaz"
+  chmod 755 "$pkgdir/usr/bin/spaz"
+}
+
+
+# Locate a game archive from one of the Humble Bundles, and symlink it into $srcdir
+_get_humblebundle_source() {
+  _get_local_source "$1" || return 1;
+  # TODO: Implement automatic downloading from Humble Bundle site
+}
+
+# Locate a file or folder provided by the user, and symlink it into $srcdir
+_get_local_source() {
+  msg "Looking for '$1'..."
+  declare -A _search=(['build dir']="$startdir"
+                      ['$LOCAL_PACKAGE_SOURCES']="$LOCAL_PACKAGE_SOURCES")
+  for _key in "${!_search[@]}"; do local _dir="${_search["$_key"]}"
+    if [ -z "$_dir" ]; then _dir="<undefined>"; fi
+    echo -n "    - in $_key ['$_dir'] ... ";
+    if [ -e "$_dir/$1" ]; then
+      echo "FOUND"; ln -sfT "$(readlink -f "$_dir/$1")" "$srcdir/$1"; break; fi
+    echo "NOT FOUND"
+  done
+  if [ ! -e "$srcdir/$1" ]; then return 1; fi
+}

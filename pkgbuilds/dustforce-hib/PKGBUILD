@@ -1,0 +1,80 @@
+# Maintainer: Sam S. <smls75@gmail.com>
+
+pkgname=dustforce-hib
+pkgver=1.0.20120917
+_hibver=1347954459
+pkgrel=0
+pkgdesc='A fast-paced 2D platformer game (Humble Bundle version)'
+url='http://dustforce.com/'
+arch=('i686' 'x86_64')
+license=('custom:commercial')
+makedepends=('coreutils')
+depends=('mesa' 'sdl' 'libxau' 'libxdamage' 'libxdmcp' 'libxinerama' 'freealut'
+         'fontconfig' 'libidn' 'libvorbis' 'zlib')
+source=('dustforce-hib.desktop')
+md5sums=('cbdc6b544c0011b72c9ade41ba4a4f63')
+PKGEXT='.pkg.tar'
+
+_gamepkg="dustforce-linux-${_hibver}.sh"
+
+
+package() {
+  cd $srcdir
+
+  # Get installer
+  _get_humblebundle_source "${_gamepkg}" || {
+    error "Unable to find the game archive. Please download it from your Humble
+           Bundle page, and place it into one of the above locations."
+    exit 1; }
+
+  # Execute installer
+  msg "Starting setup..."
+  [[ -d "./temp" ]] && rm -r "./temp"
+  sh "./${_gamepkg}" --unattended --no-register --keep --overwrite \
+                     --target  "${srcdir}/temp" \
+                     --bindir  "${srcdir}/bin" \
+                     --datadir "${pkgdir}/opt"
+
+  # Remove bundled libraries & helper binaries (use system packages instead)
+  rm -rf "${pkgdir}/opt/Dustforce/lib64/lib"{SDL-1.2.so.0}
+  rm -rf "${pkgdir}/opt/Dustforce/"{xdg-open,xdg-utils}
+
+  # Install desktop entry
+  install -Dm644 "${pkgname}.desktop" \
+                 "${pkgdir}/usr/share/applications/${pkgname}.desktop"
+
+  # Install icon
+  install -Dm644 "${pkgdir}/opt/Dustforce/Dustforce.png" \
+                 "${pkgdir}/usr/share/pixmaps/dustforce.png"
+
+  # Install launcher symlink
+  case $CARCH in
+      i686) _arch=x86 ;;
+      x86_64) _arch=x86_64;;
+  esac
+  chmod 755 "${pkgdir}/opt/Dustforce/Dustforce.bin.$_arch"
+  install -d "${pkgdir}/usr/bin"
+  ln -s "/opt/Dustforce/Dustforce.bin.${_arch}" "${pkgdir}/usr/bin/dustforce"
+}
+
+
+# Locate a game archive from one of the Humble Bundles, and symlink it into $srcdir
+_get_humblebundle_source() {
+  _get_local_source "$1" || return 1;
+  # TODO: Implement automatic downloading from Humble Bundle site
+}
+
+# Locate a file or folder provided by the user, and symlink it into $srcdir
+_get_local_source() {
+  msg "Looking for '$1'..."
+  declare -A _search=(['build dir']="$startdir"
+                      ['$LOCAL_PACKAGE_SOURCES']="$LOCAL_PACKAGE_SOURCES")
+  for _key in "${!_search[@]}"; do local _dir="${_search["$_key"]}"
+    if [ -z "$_dir" ]; then _dir="<undefined>"; fi
+    echo -n "    - in $_key ['$_dir'] ... ";
+    if [ -e "$_dir/$1" ]; then
+      echo "FOUND"; ln -sfT "$(readlink -f "$_dir/$1")" "$srcdir/$1"; break; fi
+    echo "NOT FOUND"
+  done
+  if [ ! -e "$srcdir/$1" ]; then return 1; fi
+}

@@ -1,0 +1,87 @@
+# Maintainer: Sam S. <smls75@gmail.com>
+# Original submitter: Yann Kaiser <kaiser.yann@gmail.com>
+
+pkgname=bittriprunner
+pkgver=1.0_20120927
+_hibver=1.0-4
+_buildver=1348702546
+pkgrel=1
+pkgdesc="BIT.TRIP RUNNER, a rhythm-based action platformer"
+url="http://bittripgame.com/bittrip-runner.html"
+arch=('i686' 'x86_64')
+license=('custom')
+depends=('sdl' 'libgl' 'openal' 'libvorbis' 'libogg' 'zlib')
+source=('bittriprunner.desktop')
+md5sums=('3873d051fd4e1876d17e9fdb7a6fe519')
+
+case $CARCH in
+  i686)
+    _archive="bit.trip.runner-linux-${_hibver}_i386-${_buildver}.tar.gz"
+    _archivemd5='900019b5994e1b8b2e08fcf07d9c1c08' ;;
+  x86_64)
+    _archive="bit.trip.runner_${_hibver}_amd64-${_buildver}.tar.gz"
+    _archivemd5='026712ac29972467f0b167a3eeaa3933' ;;
+esac
+
+_archivedir="bit.trip.runner-1.0";
+_installname="bit.trip.runner"
+
+build() {
+  # Get game archive
+  _get_humblebundle_source "${_archive}" || {
+    error "Unable to find the game archive. Please download it from your Humble
+           Bundle page, and place it into one of the above locations."
+    exit 1; }
+
+  msg "Starting setup..."
+  cd $srcdir
+
+  # Unpack game archive
+  [[ -d ${_archivedir} ]] && rm -r "${_archivedir}"
+  tar -xf "${_archive}"
+
+  # Install game files
+  mkdir -p "${pkgdir}/opt/${_installname}"
+  cp -r "${_archivedir}/bit.trip.runner"/* "${pkgdir}/opt/${_installname}/"
+
+  # Install launcher script
+  echo -e "#!/bin/sh\ncd /opt/${_installname} && ./bit.trip.runner" \
+        > "launcher.sh"
+  install -Dm755 "launcher.sh" "${pkgdir}/usr/bin/${_installname}"
+
+  # Install icon
+  install -Dm644 "${_archivedir}/bit.trip.runner/RUNNER.png" \
+                 "${pkgdir}/usr/share/pixmaps/${_installname}.png"
+
+  # Install desktop entry
+  install -Dm644 "${pkgname}.desktop" \
+                 "${pkgdir}/usr/share/applications/${_installname}.desktop"
+
+  # Install documentation
+  mkdir -p "${pkgdir}/usr/share/doc/${_installname}"
+  cp -r "${_archivedir}/README"* "${pkgdir}/usr/share/doc/${_installname}"
+}
+
+
+###### HELPER FUNCTIONS ######
+
+# Locate a game archive from one of the Humble Bundles, and symlink it into $srcdir
+_get_humblebundle_source() {
+  _get_local_source "$1" || return 1;
+  # TODO: Implement automatic downloading from Humble Bundle site
+}
+
+# Locate a file or folder provided by the user, and symlink it into $srcdir
+_get_local_source() {
+  msg "Looking for '$1'..."; _found=0
+  declare -A _search=(['build dir']="$startdir"
+                      ['$LOCAL_PACKAGE_SOURCES']="$LOCAL_PACKAGE_SOURCES")
+  for _key in "${!_search[@]}"; do local _dir="${_search["$_key"]}"
+    if [ -z "$_dir" ]; then _dir="<undefined>"; fi
+    echo -n "    - in $_key ['$_dir'] ... ";
+    if [ -e "$_dir/$1" ]; then _found=1
+      echo "FOUND"; ln -sfT "$(readlink -f "$_dir/$1")" "$srcdir/$1"; break; fi
+    echo "NOT FOUND"
+  done
+  if [[ $_found == 0 ]]; then return 1; fi
+}
